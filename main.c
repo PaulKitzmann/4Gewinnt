@@ -1,5 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <windows.h>
+
+
+void setTextColor(int color) {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, color);
+}
 
 int initMatrix(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
     *matrix = malloc(anzahlSpalten * sizeof(int *));
@@ -40,6 +47,19 @@ void print(int **matrix, int anzahlSpalten, int anzahlZeilen) {
                         break;
                     case 2:
                         printf("2|");
+                        break;
+                        //Einfärben von "Gewinner-Steinen"
+                    case -1:
+                        setTextColor(FOREGROUND_RED);
+                        printf("1");
+                        setTextColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+                        printf("|");
+                        break;
+                    case -2:
+                        setTextColor(FOREGROUND_RED);
+                        printf("2|");
+                        setTextColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+                        printf("|");
                         break;
                     default:
                         break;
@@ -107,7 +127,12 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
             }
 
             if (counter == 4) {
-                return (*matrix)[x][y]; //Gewinner erkannt
+                int winner = (*matrix)[x][y];
+                //Einfärben der "Gewinner-Steine"
+                for (int i = 0; i < 4; i++) {
+                    (*matrix)[x][y + i] = -winner;
+                }
+                return winner; //Gewinner erkannt
             }
         }
 
@@ -128,7 +153,12 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
             }
 
             if (counter == 4) {
-                return (*matrix)[x][y]; //Gewinner erkannt
+                int winner = (*matrix)[x][y];
+                //Einfärben der "Gewinner-Steine"
+                for (int i = 0; i < 4; i++) {
+                    (*matrix)[x - i][y] = -winner;
+                }
+                return winner; //Gewinner erkannt
             }
         }
     }
@@ -156,7 +186,12 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
             }
 
             if (counter == 4) {
-                return (*matrix)[x - x1][y + y1]; //Gewinner erkannt
+                int winner = (*matrix)[x - x1][y + y1];
+                //Einfärben der "Gewinner-Steine"
+                for (int i = 0; i < 4; i++) {
+                    (*matrix)[x - x1 + i][y + y1 - i] = -winner;
+                }
+                return winner; //Gewinner erkannt
             }
         }
         (x < anzahlSpalten - 1) ? x++ : y++;
@@ -183,7 +218,12 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
             }
 
             if (counter == 4) {
-                return (*matrix)[x + x1][y + y1]; //Gewinner erkannt
+                int winner = (*matrix)[x + x1][y + y1];
+                //Einfärben der "Gewinner-Steine"
+                for (int i = 0; i < 4; i++) {
+                    (*matrix)[x + x1 + i][y + y1 - i] = -winner;
+                }
+                return winner; //Gewinner erkannt
             }
         }
         (x > 0) ? x-- : y++;
