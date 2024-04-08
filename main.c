@@ -27,11 +27,28 @@ void print(int **matrix, int anzahlSpalten, int anzahlZeilen) {
     printf("\nAktuelles Spielfeld:\n\n");
 
     for (int y = 0; y < anzahlZeilen; y++) {
-        for (int x = 0; x < anzahlSpalten; x++) {
-            printf("%d ", matrix[x][y]);
+        for (int x = -1; x < anzahlSpalten; x++) {
+            if (x == -1) {
+                printf("|");
+            } else {
+                switch (matrix[x][y]) {
+                    case 0:
+                        printf(" |");
+                        break;
+                    case 1:
+                        printf("1|");
+                        break;
+                    case 2:
+                        printf("2|");
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
         printf("\n");
     }
+    printf("\n");
 }
 
 int addToRow(int **matrix, int anzahlZeilen, int *player) {
@@ -106,10 +123,8 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
             if (counter == 0) {
                 counter++;
             } else {
-                printf("[%d][%d]\n", x,y);
-                printf("[%d][%d]\n", x - counter,y);
                 //Wenn dieselbe Zahl davor ist, wird der counter erhöht, ansonsten counter = 0
-                ((*matrix)[x][y] == (*matrix)[x-counter][y]) ? counter++ : (counter = 0);
+                ((*matrix)[x][y] == (*matrix)[x - counter][y]) ? counter++ : (counter = 0);
             }
 
             if (counter == 4) {
@@ -117,7 +132,62 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
             }
         }
     }
-    //Diagonal
+
+    //Diagonalen
+    int x;
+    int y;
+    //Diagonale unten links nach oben rechts
+    x = 0;
+    y = 0;
+    while (!(x == anzahlSpalten - 1 && y == anzahlZeilen - 1)) { // solange wir nicht im rechten unteren Eck sind
+        counter = 0;
+        for (int x1 = 0, y1 = 0; x - x1 >= 0 && y + y1 < anzahlZeilen; x1++, y1++) { // diagonal zurück bis auf kante
+
+            if ((*matrix)[x - x1][y + y1] == 0) {
+                counter = 0;
+                continue;
+            }
+            if (counter == 0) {
+                counter++;
+            } else {
+                //Wenn dieselbe Zahl davor ist, wird der counter erhöht, ansonsten counter = 0
+                ((*matrix)[x - x1][y + y1] == (*matrix)[x - x1 + counter][y + y1 - counter]) ? counter++
+                                                                                             : (counter = 0);
+            }
+
+            if (counter == 4) {
+                return (*matrix)[x - x1][y + y1]; //Gewinner erkannt
+            }
+        }
+        (x < anzahlSpalten - 1) ? x++ : y++;
+    }
+
+    //Diagonale unten rechts nach oben links
+    x = anzahlSpalten - 1;
+    y = 0;
+    while (!(x == 0 && y == anzahlZeilen - 1)) { // solange wir nicht im rechten unteren Eck sind
+        counter = 0;
+        for (int x1 = 0, y1 = 0;
+             x + x1 < anzahlZeilen && y + y1 < anzahlZeilen; x1++, y1++) { // diagonal zurück bis auf kante
+
+            if ((*matrix)[x + x1][y + y1] == 0) {
+                counter = 0;
+                continue;
+            }
+            if (counter == 0) {
+                counter++;
+            } else {
+                //Wenn dieselbe Zahl davor ist, wird der counter erhöht, ansonsten counter = 0
+                ((*matrix)[x + x1][y + y1] == (*matrix)[x + x1 - counter][y + y1 - counter]) ? counter++
+                                                                                             : (counter = 0);
+            }
+
+            if (counter == 4) {
+                return (*matrix)[x + x1][y + y1]; //Gewinner erkannt
+            }
+        }
+        (x > 0) ? x-- : y++;
+    }
 
     return 0; // Kein Gewinner erkannt
 }
