@@ -73,10 +73,11 @@ int interpreteUserInput(int ***matrix, int anzahlSpalten, int anzahlZeilen, int 
 
 int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
     //Überprüft, ob ein Gewinner feststeht und gibt diesen ggf aus
+    int counter;
 
     //Vertical
-    int counter = 0;
     for (int x = 0; x < anzahlSpalten; x++) {
+        counter = 0;
         for (int y = anzahlZeilen - 1; y >= 0; y--) { //fangen von unten an
             if ((*matrix)[x][y] == 0) {
                 break;
@@ -95,7 +96,27 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
 
     }
     //Horizontal
+    for (int y = 0; y < anzahlZeilen; y++) {
+        counter = 0;
+        for (int x = 0; x < anzahlSpalten; x++) {
+            if ((*matrix)[x][y] == 0) {
+                counter = 0;
+                continue;
+            }
+            if (counter == 0) {
+                counter++;
+            } else {
+                printf("[%d][%d]\n", x,y);
+                printf("[%d][%d]\n", x - counter,y);
+                //Wenn dieselbe Zahl davor ist, wird der counter erhöht, ansonsten counter = 0
+                ((*matrix)[x][y] == (*matrix)[x-counter][y]) ? counter++ : (counter = 0);
+            }
 
+            if (counter == 4) {
+                return (*matrix)[x][y]; //Gewinner erkannt
+            }
+        }
+    }
     //Diagonal
 
     return 0; // Kein Gewinner erkannt
@@ -131,10 +152,10 @@ int main() {
         running = interpreteUserInput(&matrix, anzahlSpalten, anzahlZeilen, &player);
 
         int winner = detectWin(&matrix, anzahlSpalten, anzahlZeilen);
-        if(winner){ // if (winner != 0)
+        if (winner) { // if (winner != 0)
             print(matrix, anzahlSpalten, anzahlZeilen);
             printf("Spieler %d hat gewonnen!", winner);
-            running=0;
+            running = 0;
         }
     }
     return 0;
