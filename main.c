@@ -57,7 +57,7 @@ void print(int **matrix, int anzahlSpalten, int anzahlZeilen) {
                         break;
                     case -2:
                         setTextColor(FOREGROUND_RED);
-                        printf("2|");
+                        printf("2");
                         setTextColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
                         printf("|");
                         break;
@@ -111,7 +111,6 @@ int interpreteUserInput(int ***matrix, int anzahlSpalten, int anzahlZeilen, int 
 int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
     //Überprüft, ob ein Gewinner feststeht und gibt diesen ggf aus
     int counter;
-
     //Vertical
     for (int x = 0; x < anzahlSpalten; x++) {
         counter = 0;
@@ -122,8 +121,13 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
             if (counter == 0) {
                 counter++;
             } else {
-                //Wenn dieselbe Zahl darunter ist, wird der counter erhöht, ansonsten counter = 0
-                ((*matrix)[x][y] == (*matrix)[x][y + counter]) ? counter++ : (counter = 0);
+                if ((*matrix)[x][y] == (*matrix)[x][y + counter]) {
+                    counter++;
+                } else if ((*matrix)[x][y + counter] != 0) {
+                    counter = 1;
+                } else {
+                    counter = 0;
+                }
             }
 
             if (counter == 4) {
@@ -137,6 +141,7 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
         }
 
     }
+
     //Horizontal
     for (int y = 0; y < anzahlZeilen; y++) {
         counter = 0;
@@ -148,8 +153,13 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
             if (counter == 0) {
                 counter++;
             } else {
-                //Wenn dieselbe Zahl davor ist, wird der counter erhöht, ansonsten counter = 0
-                ((*matrix)[x][y] == (*matrix)[x - counter][y]) ? counter++ : (counter = 0);
+                if ((*matrix)[x][y] == (*matrix)[x - counter][y]) {
+                    counter++;
+                } else if ((*matrix)[x - counter][y] != 0) {
+                    counter = 1;
+                } else {
+                    counter = 0;
+                }
             }
 
             if (counter == 4) {
@@ -180,9 +190,13 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
             if (counter == 0) {
                 counter++;
             } else {
-                //Wenn dieselbe Zahl davor ist, wird der counter erhöht, ansonsten counter = 0
-                ((*matrix)[x - x1][y + y1] == (*matrix)[x - x1 + counter][y + y1 - counter]) ? counter++
-                                                                                             : (counter = 0);
+                if ((*matrix)[x - x1][y + y1] == (*matrix)[x - x1 + counter][y + y1 - counter]) {
+                    counter++;
+                } else if ((*matrix)[x - x1 + counter][y + y1 - counter] != 0) {
+                    counter = 1;
+                } else {
+                    counter = 0;
+                }
             }
 
             if (counter == 4) {
@@ -212,16 +226,19 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
             if (counter == 0) {
                 counter++;
             } else {
-                //Wenn dieselbe Zahl davor ist, wird der counter erhöht, ansonsten counter = 0
-                ((*matrix)[x + x1][y + y1] == (*matrix)[x + x1 - counter][y + y1 - counter]) ? counter++
-                                                                                             : (counter = 0);
+                if ((*matrix)[x + x1][y + y1] == (*matrix)[x + x1 - counter][y + y1 - counter]) {
+                    counter++;
+                } else if ((*matrix)[x + x1 - counter][y + y1 - counter] != 0) {
+                    counter = 1;
+                } else {
+                    counter = 0;
+                }
             }
 
             if (counter == 4) {
                 int winner = (*matrix)[x + x1][y + y1];
-                //Einfärben der "Gewinner-Steine"
                 for (int i = 0; i < 4; i++) {
-                    (*matrix)[x + x1 + i][y + y1 - i] = -winner;
+                    (*matrix)[x + x1 - i][y + y1 - i] = -winner;
                 }
                 return winner; //Gewinner erkannt
             }
@@ -232,6 +249,67 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
     return 0; // Kein Gewinner erkannt
 }
 
+
+int cloneMatrix(int ***origin, int ***destiny, int anzahlSpalten, int anzahlZeilen) {
+    if (initMatrix(destiny, anzahlSpalten, anzahlZeilen) == EXIT_FAILURE) {
+        printf("Matrixinitialisierung fehlgeschlagen\n");
+        return EXIT_FAILURE;
+    }
+    for (int x = 0; x < anzahlSpalten; x++) {
+        for (int y = 0; y < anzahlZeilen; y++) {
+            (*destiny)[x][y] = (*origin)[x][y];
+        }
+    }
+    return EXIT_SUCCESS;
+}
+
+int evalMoves(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *player) {
+    int winner = abs(detectWin(matrix, anzahlSpalten, anzahlZeilen));
+    if (winner) {
+        return winner;
+    }
+
+    //clone Matrix
+    int **temp;
+    cloneMatrix(matrix, &temp, anzahlSpalten, anzahlZeilen);
+    print(temp, anzahlSpalten, anzahlZeilen);
+    int ***evalMatrix = &temp;
+
+
+    //Eval Moves
+    for (int x = 0; x < anzahlSpalten; x++) {
+        if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
+            addToRow((*evalMatrix) + x, anzahlZeilen, player);
+            int eval = evalMoves(evalMatrix, anzahlSpalten, anzahlZeilen, player);
+        }
+    }
+    return abs(detectWin(evalMatrix, anzahlSpalten, anzahlZeilen));
+}
+
+int getEvals(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p){
+    int*player = malloc(sizeof(int*));
+    *player = *p;
+    int winner = abs(detectWin(matrix, anzahlSpalten, anzahlZeilen));
+    if (winner) {
+        return winner;
+    }
+
+    //clone Matrix
+    int **temp;
+    cloneMatrix(matrix, &temp, anzahlSpalten, anzahlZeilen);
+    int ***evalMatrix = &temp;
+
+
+    //Eval Moves
+    for (int x = 0; x < anzahlSpalten; x++) {
+        if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
+            addToRow((*evalMatrix) + x, anzahlZeilen, player);
+            int eval = evalMoves(evalMatrix, anzahlSpalten, anzahlZeilen, player);
+            printf("Eval Zeile %d: %d\n", x + 1, eval);
+        }
+    }
+    return abs(detectWin(evalMatrix, anzahlSpalten, anzahlZeilen));
+}
 
 int main() {
     int anzahlSpalten = 0;
@@ -260,12 +338,12 @@ int main() {
     while (running) {
         print(matrix, anzahlSpalten, anzahlZeilen);
         running = interpreteUserInput(&matrix, anzahlSpalten, anzahlZeilen, &player);
-
+        getEvals(&matrix, anzahlSpalten, anzahlZeilen, &player);
         int winner = detectWin(&matrix, anzahlSpalten, anzahlZeilen);
         if (winner) { // if (winner != 0)
             print(matrix, anzahlSpalten, anzahlZeilen);
             printf("Spieler %d hat gewonnen!", winner);
-            running = 0;
+            break;
         }
     }
     return 0;
