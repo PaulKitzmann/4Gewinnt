@@ -263,31 +263,8 @@ int cloneMatrix(int ***origin, int ***destiny, int anzahlSpalten, int anzahlZeil
     return EXIT_SUCCESS;
 }
 
-int evalMoves(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *player) {
-    int winner = abs(detectWin(matrix, anzahlSpalten, anzahlZeilen));
-    if (winner) {
-        return winner;
-    }
-
-    //clone Matrix
-    int **temp;
-    cloneMatrix(matrix, &temp, anzahlSpalten, anzahlZeilen);
-    print(temp, anzahlSpalten, anzahlZeilen);
-    int ***evalMatrix = &temp;
-
-
-    //Eval Moves
-    for (int x = 0; x < anzahlSpalten; x++) {
-        if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
-            addToRow((*evalMatrix) + x, anzahlZeilen, player);
-            int eval = evalMoves(evalMatrix, anzahlSpalten, anzahlZeilen, player);
-        }
-    }
-    return abs(detectWin(evalMatrix, anzahlSpalten, anzahlZeilen));
-}
-
-int getEvals(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p){
-    int*player = malloc(sizeof(int*));
+int evalMoves(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
+    int *player = malloc(sizeof(int *));
     *player = *p;
     int winner = abs(detectWin(matrix, anzahlSpalten, anzahlZeilen));
     if (winner) {
@@ -296,19 +273,40 @@ int getEvals(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p){
 
     //clone Matrix
     int **temp;
-    cloneMatrix(matrix, &temp, anzahlSpalten, anzahlZeilen);
-    int ***evalMatrix = &temp;
-
+    int ***evalMatrix;
 
     //Eval Moves
     for (int x = 0; x < anzahlSpalten; x++) {
+        //clone
+        cloneMatrix(matrix, &temp, anzahlSpalten, anzahlZeilen);
+        evalMatrix = &temp;
+        if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
+            addToRow((*evalMatrix) + x, anzahlZeilen, player);
+            return evalMoves(evalMatrix, anzahlSpalten, anzahlZeilen, player);
+        }
+    }
+    return abs(detectWin(evalMatrix, anzahlSpalten, anzahlZeilen));
+}
+
+int getEvals(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
+    int *player = malloc(sizeof(int *));
+    *player = *p;
+
+    int **temp;
+    int ***evalMatrix;
+
+    //Eval Moves
+    for (int x = 0; x < anzahlSpalten; x++) {
+        //clone
+        cloneMatrix(matrix, &temp, anzahlSpalten, anzahlZeilen);
+        evalMatrix = &temp;
+
         if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
             addToRow((*evalMatrix) + x, anzahlZeilen, player);
             int eval = evalMoves(evalMatrix, anzahlSpalten, anzahlZeilen, player);
             printf("Eval Zeile %d: %d\n", x + 1, eval);
         }
     }
-    return abs(detectWin(evalMatrix, anzahlSpalten, anzahlZeilen));
 }
 
 int main() {
