@@ -263,9 +263,37 @@ int cloneMatrix(int ***origin, int ***destiny, int anzahlSpalten, int anzahlZeil
     return EXIT_SUCCESS;
 }
 
+int miniMax(int evals[], int player, int anzahlSpalten){
+    int isFull = 1;
+    int isDraw = 0;
+    for(int i = 0; i < anzahlSpalten; i++){
+        if(evals[i] == player){//player has chance to win
+            return player;//optimal play
+        }
+        if(evals[i] == 0){
+            isDraw = 1;
+        }
+        if(evals[i] != -1){
+            isFull = 0;
+        }
+    }
+    if(isFull){
+        return 0;
+    }
+    if(isDraw){
+        return 0;
+    }
+    return 3 - player;
+}
+
+void initEvals(int *array, int anzahlspalten){
+    for(int i = 0; i<anzahlspalten; i++){
+        array[i] = -1;
+    }
+}
+
 int evalMoves(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
     int *player = malloc(sizeof(int *));
-    *player = *p;
     int winner = abs(detectWin(matrix, anzahlSpalten, anzahlZeilen));
     if (winner) {
         return winner;
@@ -275,31 +303,34 @@ int evalMoves(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
     int **temp;
     int ***evalMatrix;
 
-    //Eval Moves
+    //Eval Moves pro Spalte
+    int evals[anzahlSpalten];
+    initEvals(evals, anzahlSpalten);
     for (int x = 0; x < anzahlSpalten; x++) {
         //clone
         cloneMatrix(matrix, &temp, anzahlSpalten, anzahlZeilen);
         evalMatrix = &temp;
+        *player = *p;
         if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
             addToRow((*evalMatrix) + x, anzahlZeilen, player);
-            return evalMoves(evalMatrix, anzahlSpalten, anzahlZeilen, player);
+            evals[x] = evalMoves(evalMatrix, anzahlSpalten, anzahlZeilen, player);
         }
     }
-    return abs(detectWin(evalMatrix, anzahlSpalten, anzahlZeilen));
+    return miniMax(evals, *p, anzahlSpalten);
 }
 
 int getEvals(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
     int *player = malloc(sizeof(int *));
-    *player = *p;
 
     int **temp;
     int ***evalMatrix;
 
-    //Eval Moves
+    //Eval Moves pro Spalte
     for (int x = 0; x < anzahlSpalten; x++) {
         //clone
         cloneMatrix(matrix, &temp, anzahlSpalten, anzahlZeilen);
         evalMatrix = &temp;
+        *player = *p;
 
         if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
             addToRow((*evalMatrix) + x, anzahlZeilen, player);
@@ -336,7 +367,7 @@ int main() {
     while (running) {
         print(matrix, anzahlSpalten, anzahlZeilen);
         running = interpreteUserInput(&matrix, anzahlSpalten, anzahlZeilen, &player);
-        getEvals(&matrix, anzahlSpalten, anzahlZeilen, &player);
+        //getEvals(&matrix, anzahlSpalten, anzahlZeilen, &player);
         int winner = detectWin(&matrix, anzahlSpalten, anzahlZeilen);
         if (winner) { // if (winner != 0)
             print(matrix, anzahlSpalten, anzahlZeilen);
@@ -346,3 +377,5 @@ int main() {
     }
     return 0;
 }
+//aphabeta pruning
+//evtl. reeinforcement learning
