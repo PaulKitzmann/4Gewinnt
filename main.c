@@ -263,31 +263,26 @@ int cloneMatrix(int ***origin, int ***destiny, int anzahlSpalten, int anzahlZeil
     return EXIT_SUCCESS;
 }
 
-int miniMax(int evals[], int player, int anzahlSpalten){
-    int isFull = 1;
-    int isDraw = 0;
-    for(int i = 0; i < anzahlSpalten; i++){
-        if(evals[i] == player){//player has chance to win
-            return player;//optimal play
-        }
-        if(evals[i] == 0){
-            isDraw = 1;
-        }
-        if(evals[i] != -1){
-            isFull = 0;
+int miniMax(int evals[], int player, int anzahlSpalten) {
+    //start with the worst choice
+    int bestChoice = (player == 1) ? 2 : 1;
+    int noMoves = 1;
+    for (int i = 0; i < anzahlSpalten; i++) {
+        if (evals[i] != -1) {
+            noMoves = 0;
+            if (evals[i] == player) {//player has chance to win
+                return player;//optimal play
+            }
+            if (evals[i] == 0) {
+                bestChoice = 0;
+            }
         }
     }
-    if(isFull){
-        return 0;
-    }
-    if(isDraw){
-        return 0;
-    }
-    return 3 - player;
+    return noMoves ? 0 : bestChoice;
 }
 
-void initEvals(int *array, int anzahlspalten){
-    for(int i = 0; i<anzahlspalten; i++){
+void initEvals(int *array, int anzahlspalten) {
+    for (int i = 0; i < anzahlspalten; i++) {
         array[i] = -1;
     }
 }
