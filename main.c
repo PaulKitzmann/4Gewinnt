@@ -217,7 +217,7 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
     while (!(x == 0 && y == anzahlZeilen - 1)) { // solange wir nicht im rechten unteren Eck sind
         counter = 0;
         for (int x1 = 0, y1 = 0;
-             x + x1 < anzahlZeilen && y + y1 < anzahlZeilen; x1++, y1++) { // diagonal zurück bis auf kante
+             x + x1 < anzahlSpalten && y + y1 < anzahlZeilen; x1++, y1++) { // diagonal zurück bis auf kante
 
             if ((*matrix)[x + x1][y + y1] == 0) {
                 counter = 0;
@@ -367,7 +367,7 @@ int main() {
     while (running) {
         print(matrix, anzahlSpalten, anzahlZeilen);
         running = interpreteUserInput(&matrix, anzahlSpalten, anzahlZeilen, &player);
-        //getEvals(&matrix, anzahlSpalten, anzahlZeilen, &player);
+        getEvals(&matrix, anzahlSpalten, anzahlZeilen, &player);
         int winner = detectWin(&matrix, anzahlSpalten, anzahlZeilen);
         if (winner) { // if (winner != 0)
             print(matrix, anzahlSpalten, anzahlZeilen);
@@ -378,4 +378,4 @@ int main() {
     return 0;
 }
 //aphabeta pruning
-//evtl. reeinforcement learning
+//evtl. reeinforcement learning 
