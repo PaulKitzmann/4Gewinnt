@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <windows.h>
+#include <time.h>
 
 
 void setTextColor(int color) {
@@ -287,6 +288,58 @@ void initEvals(int *array, int anzahlspalten) {
     }
 }
 
+int alphaBeta(int tiefe, int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p, int alpha, int beta) {
+    if (tiefe == 0) {
+        int temp = detectWin(matrix, anzahlSpalten, anzahlZeilen);
+        if(temp == 2) return -1;
+        return temp;
+    }
+    int *player = malloc(sizeof(int *));
+    int winner = abs(detectWin(matrix, anzahlSpalten, anzahlZeilen));
+    if(winner == 2) winner = -1;
+    if (winner) {
+        return winner;
+    }
+
+    //clone Matrix
+    int **temp;
+    int ***evalMatrix;
+
+    int PVfound = 0;
+    int bestMove = (player == 1) ? -1 : 1;
+    int value = 0;
+    for (int x = 0; x < anzahlSpalten; x++) {
+        //clone
+        cloneMatrix(matrix, &temp, anzahlSpalten, anzahlZeilen);
+        evalMatrix = &temp;
+        *player = *p;
+        if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
+            addToRow((*evalMatrix) + x, anzahlZeilen, player);
+            if (PVfound) {
+                value = -alphaBeta(tiefe - 1, evalMatrix, anzahlSpalten, anzahlZeilen, player, -alpha - 1, -alpha);
+                if (value > alpha && value < beta) {
+                    value = -alphaBeta(tiefe - 1, evalMatrix, anzahlSpalten, anzahlZeilen, player, -beta, -value);
+                }
+            } else {
+                value = -alphaBeta(tiefe - 1, evalMatrix, anzahlSpalten, anzahlZeilen, player, -beta, -alpha);
+            }
+            evalMatrix = &temp;
+            if(value >= bestMove) {
+                if (value >= beta){
+                    return value;
+                }
+                bestMove = value;
+                if (value > alpha){
+                    alpha = value;
+                    PVfound = 1;
+                }
+            }
+
+        }
+    }
+    return 0;
+}
+
 int evalMoves(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
     int *player = malloc(sizeof(int *));
     int winner = abs(detectWin(matrix, anzahlSpalten, anzahlZeilen));
@@ -329,8 +382,10 @@ int getEvals(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
 
         if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
             addToRow((*evalMatrix) + x, anzahlZeilen, player);
-            int eval = evalMoves(evalMatrix, anzahlSpalten, anzahlZeilen, player);
-            printf("Eval Zeile %d: %d\n", x + 1, eval);
+            long timeStart = clock();
+            //int eval = evalMoves(evalMatrix, anzahlSpalten, anzahlZeilen, player);
+            int eval = alphaBeta(6, evalMatrix, anzahlSpalten, anzahlZeilen, player, -1, 1);
+            printf("Eval Zeile %d: %d, %f s\n", x + 1, eval, (double) (clock() - timeStart) / CLOCKS_PER_SEC);
         }
     }
 }
