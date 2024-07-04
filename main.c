@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <time.h>
 
+int getEvals(double maxDauer, int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p);
 
 void setTextColor(int color) {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -72,15 +73,15 @@ void print(int **matrix, int anzahlSpalten, int anzahlZeilen) {
     printf("\n");
 }
 
-int addToRow(int **matrix, int anzahlZeilen, int *player) {
+int addToColumn(int **spalte, int anzahlZeilen, int *player) {
     int i = 0;
-    while ((*matrix)[anzahlZeilen - i - 1] != 0) {
+    while ((*spalte)[anzahlZeilen - i - 1] != 0) {
         ++i;
         if (i >= anzahlZeilen) {
             return 0; //Spalte ist voll
         }
     }
-    (*matrix)[anzahlZeilen - i - 1] = *player;
+    (*spalte)[anzahlZeilen - i - 1] = *player;
     *player = (*player == 1) ? 2 : 1;
     return 1; //Erfolgreich
 }
@@ -89,22 +90,44 @@ int interpreteUserInput(int ***matrix, int anzahlSpalten, int anzahlZeilen, int 
     int temp;
     do {
         printf("Am Zug: Spieler %d. Waehle Aktion:\n", *player);
-        printf("Verlassen [-1] | Lege einen Stein in Spalte [n]\n");
+        printf("Verlassen [-1] | Lege einen Stein in Spalte [n] | Zuege evaluieren [0]\n");
         scanf("%d", &temp);
 
         if (temp == -1) {//exit
             return 0;
         } else if (temp >= 1 && temp <= anzahlSpalten) {//Korrekte Spaltenangabe
-            int result = addToRow(*matrix + (temp - 1), anzahlZeilen, player);
+            int result = addToColumn(*matrix + (temp - 1), anzahlZeilen, player);
             if (result) { //Wenn result == 1, dann einfügen erfolgreich!
                 return result; //Erfolgreich hinzugefügt
             }
             printf("Spalte ist voll... Versuchen sie es nochmal!\n");
             temp = 0;
+        } else if (temp == 0) {
+            double zeit = 5.0;
+            while (1) {
+                printf("Aktuelle Suchdauer pro Zug pro Tiefe: %f Sekunden\n",
+                       zeit);
+                printf("Evaluation starten [0] | Suchdauer aendern: [Zeit in Sekunden] | Abbrechen [-1]\n");
+                double input;
+                scanf("%lf", &input);
+                if(input == 0){
+                    getEvals(zeit / anzahlSpalten, matrix, anzahlSpalten, anzahlZeilen, player);
+                    return 1;
+                }
+                if(input == -1){
+                    break;
+                }
+                if(input>0){
+                    zeit = input;
+                }
+                if(input < -1){
+                    printf("Falscher Input\n");
+                }
+            }
+
         } else {//inkorrekte Spaltenangabe
             printf("Falscher Input... Versuchen sie es nochmal!\n");
         }
-
     } while (!(temp >= 1 && temp <= anzahlSpalten));
     return 1;
 }
@@ -250,7 +273,6 @@ int detectWin(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
     return 0; // Kein Gewinner erkannt
 }
 
-
 int cloneMatrix(int ***origin, int ***destiny, int anzahlSpalten, int anzahlZeilen) {
     if (initMatrix(destiny, anzahlSpalten, anzahlZeilen) == EXIT_FAILURE) {
         printf("Matrixinitialisierung fehlgeschlagen\n");
@@ -261,6 +283,15 @@ int cloneMatrix(int ***origin, int ***destiny, int anzahlSpalten, int anzahlZeil
             (*destiny)[x][y] = (*origin)[x][y];
         }
     }
+    return EXIT_SUCCESS;
+}
+
+int freeMatrix(int ***matrix, int anzahlSpalten) {
+    for (int x = 0; x < anzahlSpalten; x++) {
+        free((*matrix)[x]);
+    }
+    free(*matrix);
+    *matrix = NULL;
     return EXIT_SUCCESS;
 }
 
@@ -288,62 +319,10 @@ void initEvals(int *array, int anzahlspalten) {
     }
 }
 
-int alphaBeta(int tiefe, int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p, int alpha, int beta) {
-    if (tiefe == 0) {
-        int temp = detectWin(matrix, anzahlSpalten, anzahlZeilen);
-        if(temp == 2) return -1;
-        return temp;
-    }
+int evalMiniMax(int tiefe, int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
     int *player = malloc(sizeof(int *));
     int winner = abs(detectWin(matrix, anzahlSpalten, anzahlZeilen));
-    if(winner == 2) winner = -1;
-    if (winner) {
-        return winner;
-    }
-
-    //clone Matrix
-    int **temp;
-    int ***evalMatrix;
-
-    int PVfound = 0;
-    int bestMove = (player == 1) ? -1 : 1;
-    int value = 0;
-    for (int x = 0; x < anzahlSpalten; x++) {
-        //clone
-        cloneMatrix(matrix, &temp, anzahlSpalten, anzahlZeilen);
-        evalMatrix = &temp;
-        *player = *p;
-        if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
-            addToRow((*evalMatrix) + x, anzahlZeilen, player);
-            if (PVfound) {
-                value = -alphaBeta(tiefe - 1, evalMatrix, anzahlSpalten, anzahlZeilen, player, -alpha - 1, -alpha);
-                if (value > alpha && value < beta) {
-                    value = -alphaBeta(tiefe - 1, evalMatrix, anzahlSpalten, anzahlZeilen, player, -beta, -value);
-                }
-            } else {
-                value = -alphaBeta(tiefe - 1, evalMatrix, anzahlSpalten, anzahlZeilen, player, -beta, -alpha);
-            }
-            evalMatrix = &temp;
-            if(value >= bestMove) {
-                if (value >= beta){
-                    return value;
-                }
-                bestMove = value;
-                if (value > alpha){
-                    alpha = value;
-                    PVfound = 1;
-                }
-            }
-
-        }
-    }
-    return 0;
-}
-
-int evalMoves(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
-    int *player = malloc(sizeof(int *));
-    int winner = abs(detectWin(matrix, anzahlSpalten, anzahlZeilen));
-    if (winner) {
+    if (winner || tiefe == 0) {
         return winner;
     }
 
@@ -360,19 +339,36 @@ int evalMoves(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
         evalMatrix = &temp;
         *player = *p;
         if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
-            addToRow((*evalMatrix) + x, anzahlZeilen, player);
-            evals[x] = evalMoves(evalMatrix, anzahlSpalten, anzahlZeilen, player);
+            addToColumn((*evalMatrix) + x, anzahlZeilen, player);
+            evals[x] = evalMiniMax(tiefe - 1, evalMatrix, anzahlSpalten, anzahlZeilen, player);
         }
+        //alpha-beta-pruning
+        if (evals[x] == *p){
+            break;
+        }
+        freeMatrix(evalMatrix, anzahlSpalten);
     }
+    free(player);
     return miniMax(evals, *p, anzahlSpalten);
 }
 
-int getEvals(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
-    int *player = malloc(sizeof(int *));
+int countFreieFelder(int ***matrix, int anzahlSpalten, int anzahlZeilen){
+    int counter = 0;
+    for(int x = 0; x < anzahlSpalten; x++){
+        for(int y = 0; y<anzahlZeilen; y++){
+            if((*matrix)[x][y] == 0){
+                counter++;
+            }
+        }
+    }
+    return counter;
+}
 
+int getEvals(double maxDauer, int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
+    int *player = malloc(sizeof(int *));
     int **temp;
     int ***evalMatrix;
-
+    int maxTiefe = countFreieFelder(matrix, anzahlSpalten, anzahlZeilen);
     //Eval Moves pro Spalte
     for (int x = 0; x < anzahlSpalten; x++) {
         //clone
@@ -381,11 +377,18 @@ int getEvals(int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
         *player = *p;
 
         if (!(*evalMatrix)[x][0]) {//Prüfe ob Spalte voll
-            addToRow((*evalMatrix) + x, anzahlZeilen, player);
+            addToColumn((*evalMatrix) + x, anzahlZeilen, player);
             long timeStart = clock();
-            //int eval = evalMoves(evalMatrix, anzahlSpalten, anzahlZeilen, player);
-            int eval = alphaBeta(6, evalMatrix, anzahlSpalten, anzahlZeilen, player, -1, 1);
-            printf("Eval Zeile %d: %d, %f s\n", x + 1, eval, (double) (clock() - timeStart) / CLOCKS_PER_SEC);
+            long timeStartTiefe = clock();
+            int eval = 0;
+            int tiefe;
+            for (tiefe = 0; (double) (clock() - timeStartTiefe) / CLOCKS_PER_SEC <= maxDauer && tiefe <= maxTiefe; tiefe++) {
+                timeStartTiefe = clock();
+                eval = evalMiniMax(tiefe, evalMatrix, anzahlSpalten, anzahlZeilen, player);
+                //Zwischenergebnisse
+                //printf("Tiefe: %d, Zeitinterval = %f\n", tiefe, (double) (clock() - timeStartTiefe) / CLOCKS_PER_SEC);
+            }
+            printf("Eval Zeile %d: %d, %f s - Tiefe %d:\n", x + 1, eval, (double) (clock() - timeStart) / CLOCKS_PER_SEC, tiefe);
         }
     }
 }
@@ -417,7 +420,6 @@ int main() {
     while (running) {
         print(matrix, anzahlSpalten, anzahlZeilen);
         running = interpreteUserInput(&matrix, anzahlSpalten, anzahlZeilen, &player);
-        getEvals(&matrix, anzahlSpalten, anzahlZeilen, &player);
         int winner = detectWin(&matrix, anzahlSpalten, anzahlZeilen);
         if (winner) { // if (winner != 0)
             print(matrix, anzahlSpalten, anzahlZeilen);
