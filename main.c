@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <time.h>
 
-int getEvals(double maxDauer, int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p);
+int* getEvals(double maxDauer, int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p, int ergebnisAnzeigen);
 
 void setTextColor(int color) {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -105,26 +105,25 @@ int interpreteUserInput(int ***matrix, int anzahlSpalten, int anzahlZeilen, int 
         } else if (temp == 0) {
             double zeit = 5.0;
             while (1) {
-                printf("Aktuelle Suchdauer pro Zug pro Tiefe: %f Sekunden\n",
-                       zeit);
+                printf("Aktuelle Suchdauer pro Zug pro Tiefe: %f Sekunden\n", zeit);
                 printf("Evaluation starten [0] | Suchdauer aendern: [Zeit in Sekunden] | Abbrechen [-1]\n");
                 double input;
                 scanf("%lf", &input);
-                if(input == 0){
-                    getEvals(zeit / anzahlSpalten, matrix, anzahlSpalten, anzahlZeilen, player);
+                if (input == 0) {
+                    getEvals(zeit / anzahlSpalten, matrix, anzahlSpalten, anzahlZeilen, player, 1);
                     return 1;
                 }
-                if(input == -1){
+                if (input == -1) {
                     break;
                 }
-                if(input>0){
+                if (input > 0) {
                     zeit = input;
                 }
-                if(input < -1){
+                if (input < -1) {
                     printf("Falscher Input\n");
                 }
             }
-
+            return -1;
         } else {//inkorrekte Spaltenangabe
             printf("Falscher Input... Versuchen sie es nochmal!\n");
         }
@@ -322,7 +321,7 @@ void initEvals(int *array, int anzahlspalten) {
 int evalMiniMax(int tiefe, int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
     int *player = malloc(sizeof(int *));
     int winner = abs(detectWin(matrix, anzahlSpalten, anzahlZeilen));
-    if (winner || tiefe == 0) {
+    if (winner != 0 || tiefe == 0) {
         return winner;
     }
 
@@ -343,7 +342,7 @@ int evalMiniMax(int tiefe, int ***matrix, int anzahlSpalten, int anzahlZeilen, i
             evals[x] = evalMiniMax(tiefe - 1, evalMatrix, anzahlSpalten, anzahlZeilen, player);
         }
         //alpha-beta-pruning
-        if (evals[x] == *p){
+        if (evals[x] == *p) {
             break;
         }
         freeMatrix(evalMatrix, anzahlSpalten);
@@ -352,11 +351,11 @@ int evalMiniMax(int tiefe, int ***matrix, int anzahlSpalten, int anzahlZeilen, i
     return miniMax(evals, *p, anzahlSpalten);
 }
 
-int countFreieFelder(int ***matrix, int anzahlSpalten, int anzahlZeilen){
+int countFreieFelder(int ***matrix, int anzahlSpalten, int anzahlZeilen) {
     int counter = 0;
-    for(int x = 0; x < anzahlSpalten; x++){
-        for(int y = 0; y<anzahlZeilen; y++){
-            if((*matrix)[x][y] == 0){
+    for (int x = 0; x < anzahlSpalten; x++) {
+        for (int y = 0; y < anzahlZeilen; y++) {
+            if ((*matrix)[x][y] == 0) {
                 counter++;
             }
         }
@@ -364,11 +363,14 @@ int countFreieFelder(int ***matrix, int anzahlSpalten, int anzahlZeilen){
     return counter;
 }
 
-int getEvals(double maxDauer, int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p) {
+int* getEvals(double maxDauer, int ***matrix, int anzahlSpalten, int anzahlZeilen, int *p, int ergebnisAnzeigen) {
     int *player = malloc(sizeof(int *));
     int **temp;
     int ***evalMatrix;
     int maxTiefe = countFreieFelder(matrix, anzahlSpalten, anzahlZeilen);
+    //für Engine
+    int *evals = (int *)malloc(anzahlSpalten * sizeof(int));
+    initEvals(evals, anzahlSpalten);
     //Eval Moves pro Spalte
     for (int x = 0; x < anzahlSpalten; x++) {
         //clone
@@ -382,39 +384,85 @@ int getEvals(double maxDauer, int ***matrix, int anzahlSpalten, int anzahlZeilen
             long timeStartTiefe = clock();
             int eval = 0;
             int tiefe;
-            for (tiefe = 0; (double) (clock() - timeStartTiefe) / CLOCKS_PER_SEC <= maxDauer && tiefe <= maxTiefe; tiefe++) {
+            for (tiefe = 0;
+                 (double) (clock() - timeStartTiefe) / CLOCKS_PER_SEC <= maxDauer && tiefe <= maxTiefe; tiefe++) {
                 timeStartTiefe = clock();
                 eval = evalMiniMax(tiefe, evalMatrix, anzahlSpalten, anzahlZeilen, player);
                 //Zwischenergebnisse
                 //printf("Tiefe: %d, Zeitinterval = %f\n", tiefe, (double) (clock() - timeStartTiefe) / CLOCKS_PER_SEC);
             }
-            printf("Eval Zeile %d: %d, %f s - Tiefe %d:\n", x + 1, eval, (double) (clock() - timeStart) / CLOCKS_PER_SEC, tiefe);
+            if(ergebnisAnzeigen) {
+                printf("Eval Zeile %d: %d, %f s - Tiefe %d:\n", x + 1, eval,
+                       (double) (clock() - timeStart) / CLOCKS_PER_SEC, tiefe);
+            }
+            //Ergebnis speichern
+            evals[x] = eval;
         }
     }
+    return evals;
 }
 
-int main() {
-    int anzahlSpalten = 0;
-    int anzahlZeilen = 0;
-    int **matrix;
-    int player = 1; // Spieler eins beginnt
+int engineMakeMove(int * evals, int ***matrix, int anzahlSpalten, int anzahlZeilen, int *player){
+    int isLoosing = 1;
+    for(int i = 0; i<anzahlSpalten; i++){
+        if(evals[i]  == -1){
+            continue;
+        }
+        if(evals[i] == 2){
+            addToColumn((*matrix) + i, anzahlZeilen, player);
+            return 0;
+        }
+        if(evals[i] == 0){
+            isLoosing = 0;
+        }
+    }
+    int move = 0;
+    if(isLoosing){
+        while(!addToColumn((*matrix) + move, anzahlZeilen, player)){
+            move = rand() % anzahlSpalten;
+        }
+    }
+    else{
+        while(1){
+            move = rand() % anzahlSpalten;
+            if(evals[move]==0){
+                addToColumn((*matrix) + move, anzahlZeilen, player);
+                break;
+            }
+        }
+    }
+    printf("Engine hat in Spalte %d gezogen\n", move + 12);
+    return 0;
+}
 
-    printf("Anzahl der Spalten eingeben: ");
-    scanf("%d", &anzahlSpalten);
+int initGame(int *** matrix, int* anzahlSpalten, int* anzahlZeilen){
+    while (*anzahlSpalten <= 0) {
+        printf("Anzahl der Spalten eingeben: ");
+        scanf("%d", anzahlSpalten);
+    }
 
-    printf("Anzahl der Zeilen eingeben: ");
-    scanf("%d", &anzahlZeilen);
+    while (*anzahlZeilen <= 0){
+        printf("Anzahl der Zeilen eingeben: ");
+        scanf("%d", anzahlZeilen);
+    }
 
-    printf("Anzahl der Spalten: %d""\n", anzahlSpalten);
-    printf("Anzahl der Zeilen:  %d\n", anzahlZeilen);
+    printf("Anzahl der Spalten: %d""\n", *anzahlSpalten);
+    printf("Anzahl der Zeilen:  %d\n", *anzahlZeilen);
 
-    if (initMatrix(&matrix, anzahlSpalten, anzahlZeilen) == EXIT_FAILURE) {
+    if (initMatrix(matrix, *anzahlSpalten, *anzahlZeilen) == EXIT_FAILURE) {
         printf("Matrixinitialisierung fehlgeschlagen\n");
         return EXIT_FAILURE;
     }
 
     printf("Matrix initialisiert\n");
+}
 
+int playervsplayer() {
+    int anzahlSpalten = 0;
+    int anzahlZeilen = 0;
+    int **matrix;
+    int player = 1; // Spieler eins beginnt
+    initGame(&matrix, &anzahlSpalten, &anzahlZeilen);
 
     int running = 1;
     while (running) {
@@ -426,8 +474,105 @@ int main() {
             printf("Spieler %d hat gewonnen!", winner);
             break;
         }
+        if (countFreieFelder(&matrix, anzahlSpalten, anzahlZeilen) == 0){
+            printf("Unentschieden!\n");
+            break;
+        }
     }
     return 0;
 }
-//aphabeta pruning
-//evtl. reeinforcement learning 
+
+int playervsengine() {
+    int anzahlSpalten = 0;
+    int anzahlZeilen = 0;
+    int **matrix;
+    int player = 0;
+    while (player == 0){
+        printf("Du beginnst [1] | Die Engine beginnt [2]\n");
+        scanf("%d", &player);
+        (player == 1 || player == 2)? : (player = 0);
+    }
+    double bedenkzeit = 5;
+    while(1){
+        printf("Aktuelle Bedenkzeit fuer die Engine: %lf s\n", bedenkzeit);
+        printf("Spiel starten [0] | Bedenkzeit aendern: [Zeit in Sekunden]\n");
+        double input;
+        scanf("%lf", &input);
+        if(input==0){
+            break;
+        }
+        if(input>0){
+            bedenkzeit = input;
+            continue;
+        }
+        printf("Falscher Input\n");
+
+    }
+    initGame(&matrix, &anzahlSpalten, &anzahlZeilen);
+
+    int running = 1;
+    while (running) {
+        //Dein Zug
+        print(matrix, anzahlSpalten, anzahlZeilen);
+        do {
+            running = interpreteUserInput(&matrix, anzahlSpalten, anzahlZeilen, &player);
+        }while(running==-1);
+
+        int winner = detectWin(&matrix, anzahlSpalten, anzahlZeilen);
+        if (winner == 1) {
+            print(matrix, anzahlSpalten, anzahlZeilen);
+            printf("Du hast gewonnen!");
+            break;
+        }
+        if (countFreieFelder(&matrix, anzahlSpalten, anzahlZeilen) == 0){
+            printf("Unentschieden!\n");
+            break;
+        }
+
+        //Zug der Engine
+        int* evals = getEvals(bedenkzeit / anzahlSpalten / anzahlSpalten, &matrix, anzahlSpalten, anzahlZeilen, &player, 0);
+        engineMakeMove(evals, &matrix, anzahlSpalten, anzahlZeilen, &player);
+        if (winner == 2) {
+            print(matrix, anzahlSpalten, anzahlZeilen);
+            printf("Du hast verloren!");
+            break;
+        }
+        if (countFreieFelder(&matrix, anzahlSpalten, anzahlZeilen) == 0){
+            printf("Unentschieden!\n");
+            break;
+        }
+    }
+    return 0;
+}
+
+void printIntro() {
+    puts("  _  _      _____               _             _   ");
+    puts(" | || |    / ____|             (_)           | |  ");
+    puts(" | || |_  | |  __  _____      ___ _ __  _ __ | |_ ");
+    puts(" |__   _| | | |_ |/ _ \\ \\ /\\ / / | '_ \\| '_ \\| __|");
+    puts("    | |   | |__| |  __/\\ V  V /| | | | | | | | |_ ");
+    puts("    |_|    \\_____|\\___| \\_/\\_/ |_|_| |_|_| |_|\\__|");
+    puts("                                                 ");
+    puts("                                                 ");
+    puts("      Ein einfaches 4-Gewinnt-Spiel in der Konsole");
+    puts("                                                 ");
+}
+
+int main() {
+    printIntro();
+    while (1) {
+        int input;
+        printf("Anwendung beenden [0] | PvP-Spiel starten [1] | PvE-Spiel starten [2]\n");
+        scanf("%d", &input);
+        if (input == 0) {
+            break;
+        } else if (input == 1) {
+            playervsplayer();
+        } else if (input == 2) {
+            playervsengine();
+        } else {
+            printf("Falscher Input \n");
+        }
+    }
+    return 0;
+}
