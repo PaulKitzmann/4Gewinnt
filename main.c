@@ -90,7 +90,7 @@ int interpreteUserInput(int ***matrix, int anzahlSpalten, int anzahlZeilen, int 
     int temp;
     do {
         printf("Am Zug: Spieler %d. Waehle Aktion:\n", *player);
-        printf("Verlassen [-1] | Lege einen Stein in Spalte [n] | Zuege evaluieren [0]\n");
+        printf("Spiel beenden [-1] | Lege einen Stein in Spalte [n] | Zuege evaluieren [0]\n");
         scanf("%d", &temp);
 
         if (temp == -1) {//exit
@@ -431,7 +431,7 @@ int engineMakeMove(int * evals, int ***matrix, int anzahlSpalten, int anzahlZeil
             }
         }
     }
-    printf("Engine hat in Spalte %d gezogen\n", move + 12);
+    printf("Engine hat in Spalte %d gezogen\n", move + 1);
     return 0;
 }
 
@@ -471,7 +471,7 @@ int playervsplayer() {
         int winner = detectWin(&matrix, anzahlSpalten, anzahlZeilen);
         if (winner) { // if (winner != 0)
             print(matrix, anzahlSpalten, anzahlZeilen);
-            printf("Spieler %d hat gewonnen!", winner);
+            printf("Spieler %d hat gewonnen!\n", winner);
             break;
         }
         if (countFreieFelder(&matrix, anzahlSpalten, anzahlZeilen) == 0){
@@ -512,34 +512,41 @@ int playervsengine() {
 
     int running = 1;
     while (running) {
+        int winner=0;
         //Dein Zug
-        print(matrix, anzahlSpalten, anzahlZeilen);
-        do {
-            running = interpreteUserInput(&matrix, anzahlSpalten, anzahlZeilen, &player);
-        }while(running==-1);
-
-        int winner = detectWin(&matrix, anzahlSpalten, anzahlZeilen);
-        if (winner == 1) {
+        if(player == 1) {
             print(matrix, anzahlSpalten, anzahlZeilen);
-            printf("Du hast gewonnen!");
-            break;
-        }
-        if (countFreieFelder(&matrix, anzahlSpalten, anzahlZeilen) == 0){
-            printf("Unentschieden!\n");
-            break;
+            do {
+                running = interpreteUserInput(&matrix, anzahlSpalten, anzahlZeilen, &player);
+            } while (running == -1);
+
+            winner = detectWin(&matrix, anzahlSpalten, anzahlZeilen);
+            if (winner == 1) {
+                print(matrix, anzahlSpalten, anzahlZeilen);
+                printf("Du hast gewonnen!\n");
+                break;
+            }
+            if (countFreieFelder(&matrix, anzahlSpalten, anzahlZeilen) == 0) {
+                printf("Unentschieden!\n");
+                break;
+            }
         }
 
         //Zug der Engine
-        int* evals = getEvals(bedenkzeit / anzahlSpalten / anzahlSpalten, &matrix, anzahlSpalten, anzahlZeilen, &player, 0);
-        engineMakeMove(evals, &matrix, anzahlSpalten, anzahlZeilen, &player);
-        if (winner == 2) {
-            print(matrix, anzahlSpalten, anzahlZeilen);
-            printf("Du hast verloren!");
-            break;
-        }
-        if (countFreieFelder(&matrix, anzahlSpalten, anzahlZeilen) == 0){
-            printf("Unentschieden!\n");
-            break;
+        if(player==2) {
+            int *evals = getEvals(bedenkzeit / anzahlSpalten / anzahlSpalten, &matrix, anzahlSpalten, anzahlZeilen,
+                                  &player, 0);
+            engineMakeMove(evals, &matrix, anzahlSpalten, anzahlZeilen, &player);
+            winner = detectWin(&matrix, anzahlSpalten, anzahlZeilen);
+            if (winner) {
+                print(matrix, anzahlSpalten, anzahlZeilen);
+                printf("Du hast verloren!\n");
+                break;
+            }
+            if (countFreieFelder(&matrix, anzahlSpalten, anzahlZeilen) == 0) {
+                printf("Unentschieden!\n");
+                break;
+            }
         }
     }
     return 0;
